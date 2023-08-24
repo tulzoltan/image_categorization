@@ -8,13 +8,13 @@ import analytics
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 
-pdir = "plots/"
+pdir = os.getcwd()+"plots/"
 if not os.path.exists(pdir):
     os.mkdir(pdir)
 
 np.random.seed(0)
 
-dataset = data_loader(augment_data=True)
+dataset = data_loader(valid_split=0.1, test_split=0.1, augment_data=True)
 
 #Train model
 #model = models.FNN_model_1(input_shape=input_shape)
@@ -29,6 +29,7 @@ learning_rate = 3e-4
 num_epochs = 20
 
 handler = model_handler(model, model_name, learning_rate, pdir)
+
 handler.set_checkpoint(wgt_path)
 handler.train_model(train_data=dataset.ds_train,
                     valid_data=dataset.ds_valid,
