@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -14,9 +15,6 @@ def normalize(image, label):
 
 def augment(image, label):
     """Data augmentation"""
-    #new_hgt = new_wdt = 32
-    #image = tf.image.resize(image, (new_hgt, new_wdt))
-
     #convert 10 percent to grayscale
     if tf.random.uniform((), minval=0, maxval=1) < 0.1:
         #input layer expects 3 channels -> make 3 copies of gray image
@@ -26,18 +24,28 @@ def augment(image, label):
     #image = tf.image.random_brightness(image, max_delta = 0.1)
     #modify contrast randomly
     #image = tf.image.random_contrast(image, lower=0.1, upper=0.2)
-    #flip images "horizontall" randomly
+    #flip images "horizontally" randomly
     image = tf.image.random_flip_left_right(image)
 
     return image, label
 
 
-def process_image(ds, reader=None, augmenter=None):
+def process_image(ds, reader=None, resize=None, augmenter=None):
     """Process images, relies on tensorflow datasets"""
+    #read from files
     if not reader == None:
         ds = ds.map(reader, num_parallel_calls=AUTOTUNE)
+    #normalize
     ds = ds.map(normalize, num_parallel_calls=AUTOTUNE)
     ds = ds.cache()
+    #resize
+    if not resize == None:
+        assert len(resize)==2
+        ds = ds.map(
+                lambda img, lab: (tf.image.resize(img, resize), lab),
+                num_parallel_calls=AUTOTUNE)
+    ds = ds.map(resize, num_parallel_calls=AUTOTUNE)
+    #perform data augmentation
     if not augmenter == None:
         ds = ds.map(augment, num_parallel_calls=AUTOTUNE)
     ds = ds.batch(BATCH_SIZE)
@@ -73,7 +81,8 @@ class data_loader():
 
         #process data
         if augment_data:
-            self.ds_train = process_image(self.ds_train, augmenter=augment)
+            self.ds_train = process_image(self.ds_train,
+                                          augmenter=augment)
         else:
             self.ds_train = process_image(self.ds_train)
         self.ds_valid = process_image(self.ds_valid)
@@ -81,15 +90,24 @@ class data_loader():
 
 
 class load_data_from_files():
-    def __init__(self, directory, valid_split=0.1, test_split=0.1, augment_data=False):
+    def __init__(self,
+                 directory,
+                 csv_file,
+                 valid_split=0.1,
+                 test_split=0.1,
+                 augment_data=False):
         assert not (valid_split>1.0 or valid_split<0.0)
         assert not (test_split >1.0 or test_split <0.0)
         train_split = 1.0 - valid_split - test_split
+        assert os.path.exists(directory+csv_file)
 
         #Fetch data
-        df = pd.read_csv(directory+file_name)
-        file_paths = df['file_name'].values
-        labels     = df['label'].values
+        df = pd.read_csv(directory+csv_file)
+        print(df['label'])
+        import sys
+        sys.exit()
+        file_paths = df["file_name"].values
+        labels     = df["label"].values
 
         def read_image(image_file, label):
             image = tf.io.read_file(directory+image_file)
@@ -101,6 +119,7 @@ class load_data_from_files():
 
         #convert to tensorflow datasets
         dataset = tf.data.Dataset.from_tensor_slices((file_paths, labels))
+        dataset = dataset.shuffle()
 
         #split dataset into training, validation and test data
         train_size = int(train_split*len(labels))
@@ -111,9 +130,21 @@ class load_data_from_files():
         self.ds_test  = dataset.skip(train_size).skip(valid_size)
 
         #process data
-        process_image(self.ds_train, reader=read_image, augmenter=augment)
-        process_image(self.ds_valid, reader=read_image)
-        process_image(self.ds_test , reader=read_image)
+        if augment_data:
+            self.ds_train = process_image(
+                    self.ds_train,
+                    reader=read_image,
+                    augmenter=augment)
+        else:
+            self.ds_train = process_image(
+                    self.ds_train,
+                    reader=read_image)
+        self.ds_valid = process_image(
+                self.ds_valid,
+                reader=read_image)
+        self.ds_test  = process_image(
+                self.ds_test,
+                reader=read_image)
 
 """
     def show_examples(self):

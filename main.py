@@ -1,6 +1,6 @@
 import os
 import numpy as np
-from data_generation import data_loader
+from data_generation import data_loader, load_data_from_files
 import models
 from callbacks import make_callback_list
 from trainer import model_handler
@@ -8,13 +8,23 @@ import analytics
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 
-pdir = os.getcwd()+"plots/"
+pdir = os.getcwd()+"/plots/"
 if not os.path.exists(pdir):
     os.mkdir(pdir)
 
+data_dir = os.getcwd()+"/data/"
+assert os.path.exists(data_dir)
+
 np.random.seed(0)
 
+#Load data
 dataset = data_loader(valid_split=0.1, test_split=0.1, augment_data=True)
+
+#dataset = load_data_from_files(
+#            directory=data_dir,
+#            csv_file="labels.csv",
+#            augment_data=True)
+
 
 #Train model
 #model = models.FNN_model_1(input_shape=input_shape)
@@ -42,14 +52,11 @@ handler.model.evaluate(dataset.ds_test, verbose=2)
 
 y_pred = handler.model.predict(dataset.ds_test)
 
-test_images = []
-test_labels = []
+test_images = np.array([])
+test_labels = np.array([])
 for image, label in dataset.ds_test.unbatch().as_numpy_iterator():
-    test_images.append(image)
-    test_labels.append(label)
-
-test_images = np.array(test_images)
-test_labels = np.array(test_labels)
+    test_images = np.append(test_images, image)
+    test_labels = np.append(test_labels, label)
 
 #Confusion matrix
 anal = analytics.coma(test_images, test_labels, y_pred, dataset.num_classes)
