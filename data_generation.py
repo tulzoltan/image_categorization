@@ -30,24 +30,23 @@ def augment(image, label):
     return image, label
 
 
-def process_image(ds, reader=None, resize=None, augmenter=None):
+def process_image(ds, reader=None, target_size=None, augmenter=None):
     """Process images, relies on tensorflow datasets"""
     #read from files
     if not reader == None:
         ds = ds.map(reader, num_parallel_calls=AUTOTUNE)
     #normalize
     ds = ds.map(normalize, num_parallel_calls=AUTOTUNE)
-    ds = ds.cache()
+    #ds = ds.cache()
     #resize
-    if not resize == None:
-        assert len(resize)==2
-        ds = ds.map(
-                lambda img, lab: (tf.image.resize(img, resize), lab),
-                num_parallel_calls=AUTOTUNE)
-    ds = ds.map(resize, num_parallel_calls=AUTOTUNE)
+    #if not target_size == None:
+    #    assert len(target_size)==2
+    #    ds = ds.map(
+    #            lambda img, lab: (tf.image.resize(img, target_size), lab),
+    #            num_parallel_calls=AUTOTUNE)
     #perform data augmentation
-    if not augmenter == None:
-        ds = ds.map(augment, num_parallel_calls=AUTOTUNE)
+    #if not augmenter == None:
+    #    ds = ds.map(augment, num_parallel_calls=AUTOTUNE)
     ds = ds.batch(BATCH_SIZE)
     ds = ds.prefetch(AUTOTUNE)
     return ds
@@ -88,6 +87,22 @@ class data_loader():
         self.ds_valid = process_image(self.ds_valid)
         self.ds_test  = process_image(self.ds_test)
 
+    def show_examples(self):
+        #Visualize data
+        f, ax = plt.subplots(1, self.num_classes, figsize=(20,20))
+
+        for i in range(0,self.num_classes):
+            for image, label in self.ds_train.unbatch():
+                if label == i:
+                    ax[i].imshow(image*255, cmap="gray")
+                    ax[i].set_title("Label: {}".format(i), fontsize=16)
+                    break
+            #sample = x_train[y_train==i][0]
+            #ax[i].imshow(sample, cmap="gray")
+            #ax[i].set_title("Label: {}".format(i), fontsize=16)
+
+        plt.show()
+
 
 class load_data_from_files():
     def __init__(self,
@@ -101,16 +116,15 @@ class load_data_from_files():
         train_split = 1.0 - valid_split - test_split
         assert os.path.exists(directory+csv_file)
 
+        self.directory = directory
+
         #Fetch data
         df = pd.read_csv(directory+csv_file)
-        print(df['label'])
-        import sys
-        sys.exit()
         file_paths = df["file_name"].values
         labels     = df["label"].values
 
         def read_image(image_file, label):
-            image = tf.io.read_file(directory+image_file)
+            image = tf.io.read_file(self.directory+image_file)
             image = tf.image.decode_image(image, channels=3, dtype=tf.float32)
             return image, label
 
@@ -119,7 +133,7 @@ class load_data_from_files():
 
         #convert to tensorflow datasets
         dataset = tf.data.Dataset.from_tensor_slices((file_paths, labels))
-        dataset = dataset.shuffle()
+        dataset = dataset.shuffle(buffer_size = len(labels))
 
         #split dataset into training, validation and test data
         train_size = int(train_split*len(labels))
@@ -146,15 +160,25 @@ class load_data_from_files():
                 self.ds_test,
                 reader=read_image)
 
-"""
+    def get_test_images(self):
+        test_images = []
+        test_labels = []
+
+        for image, label in self.ds_test.unbatch().as_numpy_iterator():
+            test_images.append(image)
+            test_labels.append(label)
+
+        return np.array(test_images), np.array(test_labels)
+
     def show_examples(self):
         #Visualize data
-        f, ax = plt.subplots(1, num_classes, figsize=(20,20))
+        f, ax = plt.subplots(1, self.num_classes, figsize=(20,20))
 
-        for i in range(0,num_classes):
-            sample = x_train[y_train==i][0]
-            ax[i].imshow(sample, cmap="gray")
-            ax[i].set_title("Label: {}".format(i), fontsize=16)
+        for i in range(0,self.num_classes):
+            for image, label in self.ds_train.unbatch():
+                if label == i:
+                    ax[i].imshow(image*255, cmap="gray")
+                    ax[i].set_title("Label: {}".format(i), fontsize=16)
+                    break
 
         plt.show()
-"""

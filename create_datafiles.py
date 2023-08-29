@@ -11,15 +11,21 @@ y_test  = y_test.flatten()
 directory = os.getcwd()+"/data/"
 
 file = open(directory+"labels.csv","w")
-file.write(f"file_name, label, extra\n")
+file.write(f"file_name,label\n")
 
-for i in range(10):
+num_classes = 10
+images_per_class = 5000
+num_images = images_per_class*num_classes
+
+print(f"Saving {num_images} out of {len(x_train)} images")
+
+for i in range(num_classes):
     print(f"images in category {i}")
-    for j in range(50):
+    for j in range(images_per_class):
         sample = x_train[y_train==i][j]
         im = Image.fromarray(sample)
-        name = "IMG"+str(i)+"_"+str(j)
-        im.save(directory+name+".jpg")
-        file.write(f"{name}, {i}, 0\n")
+        name = "IMG"+str(i)+"_"+str(j)+".jpg"
+        im.save(directory+name)
+        file.write(f"{name},{i}\n")
 
 file.close()
