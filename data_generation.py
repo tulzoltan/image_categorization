@@ -45,18 +45,17 @@ def process_image(ds, reader=None, target_size=None, augmenter=None):
     #            lambda img, lab: (tf.image.resize(img, target_size), lab),
     #            num_parallel_calls=AUTOTUNE)
     #perform data augmentation
-    #if not augmenter == None:
-    #    ds = ds.map(augment, num_parallel_calls=AUTOTUNE)
+    if not augmenter == None:
+        ds = ds.map(augment, num_parallel_calls=AUTOTUNE)
     ds = ds.batch(BATCH_SIZE)
     ds = ds.prefetch(AUTOTUNE)
     return ds
 
 
 class data_loader():
-    def __init__(self, valid_split=0.1, test_split=0.1, augment_data=False):
+    def __init__(self, valid_split=0.1, augment_data=False):
         assert not (valid_split>1.0 or valid_split<0.0)
-        assert not (test_split >1.0 or test_split <0.0)
-        train_split = 1.0 - valid_split - test_split
+        train_split = 1.0 - valid_split
 
         #Fetch data
         (x_train, y_train), (x_test, y_test) = cifar10.load_data()
@@ -74,7 +73,6 @@ class data_loader():
         #split dataset into training, validation and test data
         train_size = int(train_split*len(x_train))
         valid_size = int(valid_split*len(x_train))
-        test_size  = int(test_split *len(x_train))
         self.ds_valid = self.ds_train.skip(train_size).take(valid_size)
         self.ds_train = self.ds_train.take(train_size)
 
@@ -128,6 +126,7 @@ class load_data_from_files():
             image = tf.image.decode_image(image, channels=3, dtype=tf.float32)
             return image, label
 
+        self.read_image = read_image
         self.input_shape = (32, 32, 3)
         self.num_classes = 10
 
@@ -160,11 +159,48 @@ class load_data_from_files():
                 self.ds_test,
                 reader=read_image)
 
-    def get_test_images(self):
+    def analyze_data(self, data="train"):
+        if data == "train":
+            labels = np.array([lab for img, lab in self.ds_train.unbatch()])
+        elif data == "valid":
+            labels = np.array([lab for img, lab in self.ds_valid.unbatch()])
+        elif data == "test":
+            labels = np.array([lab for img, lab in self.ds_test.unbatch() ])
+        else:
+            import sys
+            sys.exit("Invalid argument")
+
+        #create matrix
+        labmat = np.zeros((self.num_classes, self.num_classes), dtype=np.int32)
+        for i in range(len(labels)-1):
+            labmat[labels[i],labels[i+1]] += 1
+        labmat[labels[-1],labels[0]] += 1
+
+        fig, ax = plt.subplots(1, 2, figsize=(10,10))
+        #fig.tight_layout()
+        fig.suptitle(f"Size of dataset: {len(labels)}")
+
+        #histogram
+        ax[0].hist(labels, bins=self.num_classes, density=True)
+        ax[0].set_xlabel("label")
+        ax[0].set_ylabel("frequency of occurence")
+
+        #matrix
+        ax[1].matshow(labmat, cmap=plt.cm.Blues, alpha=0.3)
+        for i in range(labmat.shape[0]):
+            for j in range(labmat.shape[1]):
+                ax[1].text(x=j, y=i, s=labmat[i,j], va='center', ha='center',
+                        size='xx-small')
+        ax[1].set_xlabel("label")
+        ax[1].set_ylabel("following label in sequence")
+
+        plt.show()
+
+    def get_test_separate(self):
         test_images = []
         test_labels = []
 
-        for image, label in self.ds_test.unbatch().as_numpy_iterator():
+        for image, label in self.ds_test.unbatch():
             test_images.append(image)
             test_labels.append(label)
 
@@ -182,3 +218,4 @@ class load_data_from_files():
                     break
 
         plt.show()
+

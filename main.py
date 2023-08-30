@@ -18,12 +18,13 @@ assert os.path.exists(data_dir)
 np.random.seed(0)
 
 #Load data
-#dataset = data_loader(valid_split=0.1, test_split=0.1, augment_data=True)
+dataset = data_loader(valid_split=0.1, augment_data=True)
 
-dataset = load_data_from_files(directory=data_dir, csv_file="labels.csv",
-            valid_split=0.1, test_split=0.2, augment_data=False)
+#dataset = load_data_from_files(directory=data_dir, csv_file="labels.csv",
+#            valid_split=0.1, test_split=0.2, augment_data=False)
 
-dataset.show_examples()
+#dataset.analyze_data(data="train")
+#dataset.show_examples()
 
 #Train model
 #model = models.FNN_model_1(input_shape=input_shape)
