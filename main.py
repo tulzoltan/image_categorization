@@ -18,25 +18,25 @@ assert os.path.exists(data_dir)
 np.random.seed(0)
 
 #Load data
-dataset = data_loader(valid_split=0.1, augment_data=True)
+#dataset = data_loader(valid_split=0.1, augment_data=True)
 
-#dataset = load_data_from_files(directory=data_dir, csv_file="labels.csv",
-#            valid_split=0.1, test_split=0.2, augment_data=False)
+dataset = load_data_from_files(directory=data_dir, csv_file="labels.csv",
+            valid_split=0.1, test_split=0.2, augment_data=True)
 
-#dataset.analyze_data(data="train")
-#dataset.show_examples()
+dataset.analyze_data(data="train")
+dataset.show_examples()
 
 #Train model
 #model = models.FNN_model_1(input_shape=input_shape)
 model = models.CNN_model_1(input_shape=dataset.input_shape)
-model_name = "CNN3"
+model_name = "CNN2"
 prefix = model_name + "_"
 wgt_path = prefix+"checkpoint/"
 cma_name = pdir+prefix+"confusion_matrix.png"
 err_num = 5
 err_name = pdir+prefix+"top_"+str(err_num)+"_errors.png"
 learning_rate = 3e-4
-num_epochs = 10
+num_epochs = 20
 
 handler = model_handler(model, model_name, learning_rate, pdir)
 

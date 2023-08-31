@@ -30,20 +30,25 @@ def augment(image, label):
     return image, label
 
 
-def process_image(ds, reader=None, target_size=None, augmenter=None):
+def process_image(ds,
+        reader=None,
+        rescale=False,
+        target_size=None,
+        augmenter=None):
     """Process images, relies on tensorflow datasets"""
     #read from files
     if not reader == None:
         ds = ds.map(reader, num_parallel_calls=AUTOTUNE)
     #normalize
-    ds = ds.map(normalize, num_parallel_calls=AUTOTUNE)
+    if rescale:
+        ds = ds.map(normalize, num_parallel_calls=AUTOTUNE)
     #ds = ds.cache()
     #resize
-    #if not target_size == None:
-    #    assert len(target_size)==2
-    #    ds = ds.map(
-    #            lambda img, lab: (tf.image.resize(img, target_size), lab),
-    #            num_parallel_calls=AUTOTUNE)
+    if not target_size == None:
+        assert len(target_size)==2
+        ds = ds.map(
+                lambda img, lab: (tf.image.resize(img, target_size), lab),
+                num_parallel_calls=AUTOTUNE)
     #perform data augmentation
     if not augmenter == None:
         ds = ds.map(augment, num_parallel_calls=AUTOTUNE)
@@ -79,11 +84,15 @@ class data_loader():
         #process data
         if augment_data:
             self.ds_train = process_image(self.ds_train,
+                                          rescale=True,
                                           augmenter=augment)
         else:
-            self.ds_train = process_image(self.ds_train)
-        self.ds_valid = process_image(self.ds_valid)
-        self.ds_test  = process_image(self.ds_test)
+            self.ds_train = process_image(self.ds_train,
+                                          rescale=True)
+        self.ds_valid = process_image(self.ds_valid,
+                                      rescale=True)
+        self.ds_test  = process_image(self.ds_test,
+                                      rescale=True)
 
     def show_examples(self):
         #Visualize data
@@ -118,6 +127,7 @@ class load_data_from_files():
 
         #Fetch data
         df = pd.read_csv(directory+csv_file)
+        df = df.sample(frac=1).reset_index(drop=True)
         file_paths = df["file_name"].values
         labels     = df["label"].values
 
@@ -132,7 +142,6 @@ class load_data_from_files():
 
         #convert to tensorflow datasets
         dataset = tf.data.Dataset.from_tensor_slices((file_paths, labels))
-        dataset = dataset.shuffle(buffer_size = len(labels))
 
         #split dataset into training, validation and test data
         train_size = int(train_split*len(labels))
@@ -211,9 +220,9 @@ class load_data_from_files():
         f, ax = plt.subplots(1, self.num_classes, figsize=(20,20))
 
         for i in range(0,self.num_classes):
-            for image, label in self.ds_train.unbatch():
+            for image, label in self.ds_test.unbatch():
                 if label == i:
-                    ax[i].imshow(image*255, cmap="gray")
+                    ax[i].imshow(image, cmap="gray")
                     ax[i].set_title("Label: {}".format(i), fontsize=16)
                     break
 
