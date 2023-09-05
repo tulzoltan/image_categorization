@@ -2,6 +2,8 @@ import tensorflow as tf
 import numpy as np
 from tensorflow import keras
 from tensorflow.keras import layers, regularizers
+import tensorflow_hub as hub
+
 
 #Create sequential FNN model
 def FNN_model_1(input_shape):
@@ -42,6 +44,17 @@ def CNN_model_1(input_shape):
     outputs = layers.Dense(10, activation="softmax")(x)
     model = keras.Model(inputs=inputs, outputs=outputs)
     return model
+
+
+#Create functional CNN model with NASNet
+def CNN_model_2():
+    nas = keras.Sequential([
+            hub.KerasLayer(
+            "https://tfhub.dev/google/imagenet/nasnet_mobile/feature_vector/4",
+            trainable=True),
+            layers.Dense(10, activation="softmax")
+            ])
+    return nas
 
 
 class RandomFlip(layers.Layer):
@@ -95,40 +108,3 @@ class RandomGrayscale(layers.Layer):
         if tf.random.uniform((), minval=0, maxval=1) < self.prob:
             image = tf.tile(tf.image.rgb_to_grayscale(image), [1,1,1,3])
         return image
-
-
-def augment(seq):
-    #seq = layers.Resizing(height=32, width=32)(seq)
-    #seq = RandomFlip(mode="horizontal")(seq)
-    #seq = RandomContrast(lower=0.1, upper=0.2)(seq)
-    #seq = RandomBrightness(max_delta=0.1)(seq)
-    #seq = RandomGrayscale(prob=0.1)(seq)
-    return seq
-
-
-#Create functional CNN model
-def CNN_model_2(input_shape):
-    inputs = keras.Input(shape=input_shape)
-    x = augment(inputs)
-    x = layers.Conv2D(filters=32, kernel_size=3,
-                      kernel_regularizer=regularizers.l2(0.01))(x)
-    x = layers.BatchNormalization()(x)
-    x = keras.activations.relu(x)
-    x = layers.MaxPooling2D()(x)
-    x = layers.Conv2D(64, 3,
-                      kernel_regularizer=regularizers.l2(0.01))(x)
-    x = layers.BatchNormalization()(x)
-    x = keras.activations.relu(x)
-    x = layers.MaxPooling2D()(x)
-    x = layers.Conv2D(128, 3,
-                      kernel_regularizer=regularizers.l2(0.01))(x)
-    x = layers.BatchNormalization()(x)
-    x = keras.activations.relu(x)
-    x = layers.Flatten()(x)
-    x = layers.Dense(64, activation="relu",
-                     kernel_regularizer=regularizers.l2(0.01))(x)
-    x = layers.Dropout(0.5)(x)
-    outputs = layers.Dense(10, activation="softmax")(x)
-    model = keras.Model(inputs=inputs, outputs=outputs)
-    return model
-

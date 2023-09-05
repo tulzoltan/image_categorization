@@ -2,7 +2,6 @@ import os
 import numpy as np
 from data_generation import data_loader, load_data_from_files
 import models
-from callbacks import make_callback_list
 from trainer import model_handler
 import analytics
 
@@ -27,7 +26,7 @@ dataset.analyze_data(data="train")
 dataset.show_examples()
 
 #Train model
-#model = models.FNN_model_1(input_shape=input_shape)
+#model = models.FNN_model_1(input_shape=dataset.input_shape)
 model = models.CNN_model_1(input_shape=dataset.input_shape)
 model_name = "CNN2"
 prefix = model_name + "_"
@@ -36,9 +35,10 @@ cma_name = pdir+prefix+"confusion_matrix.png"
 err_num = 5
 err_name = pdir+prefix+"top_"+str(err_num)+"_errors.png"
 learning_rate = 3e-4
+decay_steps = 4 
 num_epochs = 20
 
-handler = model_handler(model, model_name, learning_rate, pdir)
+handler = model_handler(model, model_name, learning_rate, pdir, decay_steps)
 
 handler.set_checkpoint(wgt_path)
 handler.train_model(train_data=dataset.ds_train,

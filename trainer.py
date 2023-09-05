@@ -2,18 +2,34 @@ import os
 import pandas as pd
 import tensorflow as tf
 import tensorflow.keras as keras
+from tensorflow.keras.callbacks import Callback, LearningRateScheduler
 import models
-from callbacks import make_callback_list
+
+
+def scheduler99(epoch, lr):
+    if epoch < 2:
+        return lr
+    else:
+        return lr*0.99
+
+
+class CustomCallback(Callback):
+    def on_epoch_end(self, epoch, logs=None):
+        if logs.get("accuracy") > 0.975:
+            self.model.stop_training = True
 
 
 class model_handler():
-    def __init__(self, model, model_name, learning_rate, save_location):
+    def __init__(self, model, model_name, initial_lr, save_location, decay_steps=1):
         self.model = model
+
+        #learning rate scheduler
+        self.learning_rate = keras.optimizers.schedules.CosineDecayRestarts(initial_lr, decay_steps)
 
         #compile model
         self.model.compile(
         loss=keras.losses.SparseCategoricalCrossentropy(),
-        optimizer=keras.optimizers.Adam(learning_rate=learning_rate),
+        optimizer=keras.optimizers.Adam(learning_rate=initial_lr),
         metrics=["accuracy"],
         )
 
@@ -23,6 +39,9 @@ class model_handler():
         self.save = False
 
     def set_checkpoint(self, wgt_path):
+        #lr_scheduler = LearningRateScheduler(scheduler99, verbose=1)
+        lr_scheduler = LearningRateScheduler(self.learning_rate, verbose=1)
+
         save_checkpoint = keras.callbacks.ModelCheckpoint(
                 wgt_path,
                 save_weights_only=True,
@@ -30,8 +49,8 @@ class model_handler():
                 save_best_only=True,
                 )
 
-        self.my_callback = make_callback_list()
-        self.my_callback.insert(0,save_checkpoint)
+        #self.my_callback = [save_checkpoint]
+        self.my_callback = [save_checkpoint, lr_scheduler, CustomCallback()]
         self.save = True
 
     def load_weights(self, wgt_path):

@@ -6,6 +6,21 @@ from sklearn.metrics import confusion_matrix
 import seaborn as sns
 
 
+"""
+NOTES:
+    Sensitivity: true pos / (true pos + false neg)
+    Specificity: true neg / (true neg + false pos)
+    Receiver Operator Characteristic (ROC) graph:
+        Sensitivity with respect to 1-Specificity
+        true pos rate against false pos rate
+    Area Under ROC (AUC):
+        the model with the larger AUC is considered better
+    Precision: true pos / (true pos + false pos)    
+        1-Specificity is often replaced with Precision
+        better for imbalanced samples (e.g. rare diseases)
+"""
+
+
 class coma():
     def __init__(self, dataset, y_pred, num_classes):
         x_test = []

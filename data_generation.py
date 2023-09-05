@@ -124,6 +124,7 @@ class load_data_from_files():
         assert os.path.exists(directory+csv_file)
 
         self.directory = directory
+        self.batch_size = BATCH_SIZE
 
         #Fetch data
         df = pd.read_csv(directory+csv_file)
@@ -144,12 +145,12 @@ class load_data_from_files():
         dataset = tf.data.Dataset.from_tensor_slices((file_paths, labels))
 
         #split dataset into training, validation and test data
-        train_size = int(train_split*len(labels))
-        valid_size = int(valid_split*len(labels))
-        test_size  = int(test_split *len(labels))
-        self.ds_train = dataset.take(train_size)
-        self.ds_valid = dataset.skip(train_size).take(valid_size)
-        self.ds_test  = dataset.skip(train_size).skip(valid_size)
+        self.train_size = int(train_split*len(labels))
+        self.valid_size = int(valid_split*len(labels))
+        self.test_size  = int(test_split *len(labels))
+        self.ds_train = dataset.take(self.train_size)
+        self.ds_valid = dataset.skip(self.train_size).take(self.valid_size)
+        self.ds_test  = dataset.skip(self.train_size).skip(self.valid_size)
 
         #process data
         if augment_data:
